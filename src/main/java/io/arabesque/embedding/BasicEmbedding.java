@@ -176,9 +176,10 @@ public abstract class BasicEmbedding implements Embedding {
         extensionWordIds.clear();
 
         if (numVertices==0) {
-            int totalNumWords = getTotalNumWords();
-            for (int i = 0; i < totalNumWords; ++i)
-                extensionWordIds.add(i);
+            //int totalNumWords = getTotalNumWords();
+            //for (int i = 0; i < totalNumWords; ++i)
+            //    extensionWordIds.add(i);
+            extensionWordIds.add(-1); // all words
             return;
         }
 

@@ -93,11 +93,26 @@ abstract class SparkMasterEngine(config: SparkConfiguration[_ <: Embedding])
 object SparkMasterEngine {
   import Configuration._
   import SparkConfiguration._
-  def apply(sc: SparkContext, config: SparkConfiguration[_ <: Embedding]) =
+
+  def apply(sc: SparkContext, config: SparkConfiguration[_ <: Embedding])
+    : SparkMasterEngine =
       config.getString(CONF_COMM_STRATEGY, CONF_COMM_STRATEGY_DEFAULT) match {
     case COMM_ODAG =>
       new SparkODAGMasterEngine (sc, config)
     case COMM_EMBEDDING =>
       new SparkEmbeddingMasterEngine (sc, config)
+  }
+
+  def apply(confs: Map[String,Any])
+    : SparkMasterEngine = confs.get ("comm_strategy") match {
+    case Some(COMM_ODAG) =>
+      new SparkODAGMasterEngine (confs)
+    case Some(COMM_EMBEDDING) =>
+      new SparkEmbeddingMasterEngine (confs)
+    case None =>
+      confs.update ("comm_strategy", CONF_COMM_STRATEGY_DEFAULT)
+      apply (confs)
+    case Some(invalid) =>
+      throw new RuntimeException(s"Communication Strategy is invalid: ${invalid}")
   }
 }

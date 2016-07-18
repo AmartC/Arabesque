@@ -2,6 +2,8 @@ package io.arabesque;
 
 import io.arabesque.conf.YamlConfiguration;
 import io.arabesque.computation.SparkODAGMasterEngine;
+import io.arabesque.computation.SparkMasterEngine;
+import io.arabesque.computation.SparkMasterEngine$;
 import org.apache.giraph.conf.GiraphConfiguration;
 import org.apache.giraph.job.GiraphJob;
 import org.apache.hadoop.conf.Configuration;
@@ -48,9 +50,9 @@ public class ArabesqueRunner implements Tool {
     }
 
     private int runSpark(YamlConfiguration yamlConfig) throws Exception {
-       SparkODAGMasterEngine masterEngine = new SparkODAGMasterEngine(
+       SparkMasterEngine masterEngine = SparkMasterEngine$.MODULE$.apply (
              JavaConversions.mapAsScalaMap(yamlConfig.getProperties())
-       );
+             );
 
        masterEngine.compute();
        masterEngine.finalizeComputation();

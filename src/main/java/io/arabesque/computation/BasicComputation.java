@@ -44,6 +44,7 @@ public abstract class BasicComputation<E extends Embedding> implements Computati
         modifyConsumer = new IntConsumer() {
             @Override
             public void accept(int wordId) {
+                assert wordId >= 0;
                 doModifyFilter(wordId);
             }
         };

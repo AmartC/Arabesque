@@ -45,6 +45,16 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
 
   private var masterComputation: MasterComputation = _
 
+  def this(confs: Map[String,Any]) {
+    this (new SparkConfiguration [E] (confs))
+
+    sc = new SparkContext(config.sparkConf)
+    val logLevel = config.getString ("log_level", "INFO").toUpperCase
+    sc.setLogLevel (logLevel)
+
+    init()
+  }
+
   def this(_sc: SparkContext, config: SparkConfiguration[E]) {
     this (config)
     sc = _sc
@@ -116,6 +126,12 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
     var previousAggregationsBc: Broadcast[_] = sc.broadcast (
       Map.empty[String,AggregationStorage[_ <: Writable, _ <: Writable]]
     )
+
+    //val beforeInit = System.currentTimeMillis
+    //superstepRDD.foreachPartition (_ => configBc.value.initialize())
+    //val afterInit = System.currentTimeMillis
+
+    //logInfo (s"Configuration initialized, starting computation (${afterInit - beforeInit})")
 
     val startTime = System.currentTimeMillis
 

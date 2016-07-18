@@ -46,7 +46,7 @@ public class MotifSamplingComputation extends VertexInducedSamplingComputation<V
 
     @Override
     public void process(VertexInducedEmbedding embedding) {
-        if (getStep() > aggstep && 
+        if (getStep() >= aggstep && 
               embedding.getNumWords() >= 3 && embedding.getNumWords() <= 5) {
            output(embedding);
             map(AGG_MOTIFS, embedding.getPattern(), reusableLongWritableUnit);

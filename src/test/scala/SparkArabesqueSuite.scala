@@ -43,7 +43,7 @@ class SparkArabesqueSuite extends FunSuite with BeforeAndAfterAll {
     arab = new ArabesqueContext(sc)
 
     val loader = classOf[SparkArabesqueSuite].getClassLoader
-    val url = loader.getResource("sample2.graph")
+    val url = loader.getResource("sample.graph")
     sampleGraphPath = url.getPath
     arabGraph = arab.textFile (sampleGraphPath)
 
