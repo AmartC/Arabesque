@@ -70,7 +70,7 @@ class ArabesqueGraph(
     config.set ("arabesque.motif.samplesize", sampleSize)
     config.set ("arabesque.motif.aggstep", aggStep)
     config.set ("computation",
-      "io.arabesque.gmlib.motif.sampling.MotifSamplingComputation")
+      "io.arabesque.gmlib.motif.sampling.MotifMHSamplingComputation")
     motifs (config)
   }
 

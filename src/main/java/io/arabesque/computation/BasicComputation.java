@@ -7,8 +7,6 @@ import io.arabesque.graph.MainGraph;
 import io.arabesque.pattern.Pattern;
 import io.arabesque.utils.collection.IntArrayList;
 import net.openhft.koloboke.collect.IntCollection;
-import net.openhft.koloboke.collect.set.hash.HashIntSet;
-import net.openhft.koloboke.collect.set.hash.HashIntSets;
 import net.openhft.koloboke.function.IntConsumer;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Writable;
@@ -70,8 +68,10 @@ public abstract class BasicComputation<E extends Embedding> implements Computati
             aggregationProcess(embedding);
         }
 
+        //System.out.println("Current emb." + embedding.getWords());
         IntCollection possibleModifications = getPossibleModifications(embedding);
-        
+        //System.out.println("Possible Modif." + possibleModifications);
+
         if (possibleModifications != null && getStep() > 0) {
             filter(embedding, possibleModifications);
         }

@@ -207,7 +207,7 @@ public class VertexInducedEmbedding extends BasicEmbedding {
         }
 
          if (getNumEdges()-bla < getNumVertices()-2) 
-            throw new RuntimeException (this.getPattern() + " pau na logica " + (getNumEdges()-bla) + " " + (getNumVertices()-2) + " " + bla);
+            throw new RuntimeException (this.getPattern() + " impossible be connected: " + (getNumEdges()-bla) + " " + (getNumVertices()-2) + " " + bla);
             
 
         int j = 0, i = 0;
@@ -226,9 +226,6 @@ public class VertexInducedEmbedding extends BasicEmbedding {
            }
            i++;
         }
-
-
-
         numEdgesAddedWithWord.remove(positionDeleted);
     }
 

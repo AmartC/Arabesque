@@ -1,7 +1,7 @@
 package io.arabesque.computation;
 
 import io.arabesque.conf.Configuration;
-import io.arabesque.embedding.VertexInducedEmbedding;
+import io.arabesque.embedding.BasicEmbedding;
 import io.arabesque.utils.collection.IntArrayList;
 import net.openhft.koloboke.collect.IntCollection;
 
@@ -10,7 +10,11 @@ import java.util.Random;
 /**
  * Created by carlos on 11/05/16.
  */
-    public abstract class VertexInducedSamplingComputation<E extends VertexInducedEmbedding> extends VertexInducedComputation<E> {
+
+/**
+ * Created by carlos on 11/05/16.
+ */
+public abstract class MHSamplingComputation<E extends BasicEmbedding> extends BasicComputation<E> {
 
     private Random r;
     protected int samplesize;
@@ -27,15 +31,15 @@ import java.util.Random;
 
     @Override
     protected void doModifyFilter(int wordId) {
-       if (wordId >= 0)
-          doModifyFilterWord (wordId);
-       else
-          doModifyFilterRandom (-1 * wordId, getInitialNumWords());
+        if (wordId >= 0)
+            doModifyFilterWord (wordId);
+        else
+            doModifyFilterRandom (-1 * wordId, getInitialNumWords());
     }
 
     private void doModifyFilterRandom(int numWords, int upperBound) {
-       for (int i = 0; i < numWords; i++)
-          doModifyFilterWord (r.nextInt(upperBound));
+        for (int i = 0; i < numWords; i++)
+            doModifyFilterWord (r.nextInt(upperBound));
     }
 
     private void doModifyFilterWord(int wordId) {
@@ -64,41 +68,41 @@ import java.util.Random;
     }
 
     private int modificationsSize(int[] modifications) {
-       int i = 0, size = 0;
-       while (i < modifications.length) {
-          if (modifications[i] == -1) // all words
-             size += currentEmbedding.getTotalNumWords();
-          else if (modifications[i] < 0)
-             size += (-1) * modifications[i];
-          else
-             size++;
-          i++;
-       }
-       return size;
+        int i = 0, size = 0;
+        while (i < modifications.length) {
+            if (modifications[i] == -1) // all words
+                size += currentEmbedding.getTotalNumWords();
+            else if (modifications[i] < 0)
+                size += (-1) * modifications[i];
+            else
+                size++;
+            i++;
+        }
+        return size;
     }
 
     private int nextModification(int[] modifications, int upperBound) {
         int rdIdx = r.nextInt(upperBound);
         int i = 0, j = 0;
         while (i < modifications.length) {
-           if (modifications[i] == -1) {
-              if (j + currentEmbedding.getTotalNumWords() > rdIdx)
-                 return rdIdx - j;
-              else
-                 j += currentEmbedding.getTotalNumWords();
-           } else if (modifications[i] < 0) {
-              if (j + (-1 * modifications[i]) > rdIdx)
-                 for (int k = 0; k < (-1 * modifications[i]); k++) {
-                    int nextRd = r.nextInt (getInitialNumWords());
-                    if (j + k == rdIdx) return nextRd;
-                 }
-           } else {
-              if (j + 1 > rdIdx)
-                 return modifications[i];
-              else
-                 j++;
-           }
-           i++;
+            if (modifications[i] == -1) {
+                if (j + currentEmbedding.getTotalNumWords() > rdIdx)
+                    return rdIdx - j;
+                else
+                    j += currentEmbedding.getTotalNumWords();
+            } else if (modifications[i] < 0) {
+                if (j + (-1 * modifications[i]) > rdIdx)
+                    for (int k = 0; k < (-1 * modifications[i]); k++) {
+                        int nextRd = r.nextInt (getInitialNumWords());
+                        if (j + k == rdIdx) return nextRd;
+                    }
+            } else {
+                if (j + 1 > rdIdx)
+                    return modifications[i];
+                else
+                    j++;
+            }
+            i++;
         }
 
         throw new RuntimeException ("Upper bound is greater than modifications");
@@ -107,44 +111,44 @@ import java.util.Random;
     @Override
     public void filter(E existingEmbedding, IntCollection modificationPoints) {
 
-	//int previousDegree = modificationPoints.size();
+        //int previousDegree = modificationPoints.size();
         int[] modificationsArray = modificationPoints.toIntArray();
-	int previousDegree = modificationsSize (modificationsArray);
+        int previousDegree = modificationsSize (modificationsArray);
         if (previousDegree == 0) {
-           existingEmbedding.reset();
-           return;
+            existingEmbedding.reset();
+            return;
         }
 
         //int rdIdx = r.nextInt(previousDegree);
-	//int nextModification = modificationPoints.toIntArray()[rdIdx];
-	int nextModification = nextModification (modificationsArray, previousDegree);
+        //int nextModification = modificationPoints.toIntArray()[rdIdx];
+        int nextModification = nextModification (modificationsArray, previousDegree);
         assert nextModification >= 0;
-	int degree = 1;
-	
-	//if expansion
-            if (!currentEmbedding.existWord(nextModification)) {
-                currentEmbedding.addWord(nextModification);
-		IntCollection modPoints = getPossibleModifications(currentEmbedding);
-                //degree = modPoints.size();
-                degree = modificationsSize (modPoints.toIntArray());
-                currentEmbedding.removeWord(nextModification);
-            }
-            //if contraction
-            else {
-                currentEmbedding.removeWord(nextModification);
-		IntCollection modPoints = getPossibleModifications(currentEmbedding);
-                //degree = modPoints.size();
-                degree = modificationsSize (modPoints.toIntArray());
-                currentEmbedding.addWord(nextModification);
-            }
+        int degree = 1;
+
+        //if expansion
+        if (!currentEmbedding.existWord(nextModification)) {
+            currentEmbedding.addWord(nextModification);
+            IntCollection modPoints = getPossibleModifications(currentEmbedding);
+            //degree = modPoints.size();
+            degree = modificationsSize (modPoints.toIntArray());
+            currentEmbedding.removeWord(nextModification);
+        }
+        //if contraction
+        else {
+            currentEmbedding.removeWord(nextModification);
+            IntCollection modPoints = getPossibleModifications(currentEmbedding);
+            //degree = modPoints.size();
+            degree = modificationsSize (modPoints.toIntArray());
+            currentEmbedding.addWord(nextModification);
+        }
 
 
         double accept = Math.min(1, (double) previousDegree/degree);
 
-	modificationPoints.clear();
-	
-	if (r.nextDouble() <= accept) 
-		modificationPoints.add(nextModification);
+        modificationPoints.clear();
+
+        if (r.nextDouble() <= accept)
+            modificationPoints.add(nextModification);
 
     }
 
@@ -176,10 +180,10 @@ import java.util.Random;
         IntArrayList initialExtensions = new IntArrayList();
         int numInitialWords = getInitialNumWords();
 
-	//int i = 0;
+        //int i = 0;
         //while (i<samplesize/getNumberPartitions()) {
-	//	initialExtensions.add(r.nextInt(numInitialWords));
-	//	i++;
+        //	initialExtensions.add(r.nextInt(numInitialWords));
+        //	i++;
         //}
         //
         initialExtensions.add(-1 * (samplesize/getNumberPartitions()));
@@ -187,3 +191,5 @@ import java.util.Random;
         return initialExtensions;
     }
 }
+
+

@@ -16,6 +16,7 @@ import net.openhft.koloboke.function.IntPredicate;
 import java.io.DataOutput;
 import java.io.ObjectOutput;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 
 public abstract class BasicEmbedding implements Embedding {
@@ -170,12 +171,12 @@ public abstract class BasicEmbedding implements Embedding {
     }
 
     protected void updateExtensibleWordIdsSimple() {
-        IntArrayList vertices = getVertices();
-        int numVertices = getNumVertices();
+        IntArrayList words = getWords();
+        int numWords = getNumWords();
 
         extensionWordIds.clear();
 
-        if (numVertices==0) {
+        if (numWords==0) {
             //int totalNumWords = getTotalNumWords();
             //for (int i = 0; i < totalNumWords; ++i)
             //    extensionWordIds.add(i);
@@ -183,35 +184,30 @@ public abstract class BasicEmbedding implements Embedding {
             return;
         }
 
-        for (int i = 0; i < numVertices; ++i) {
-            IntCollection elements = getValidElementsForExpansion(vertices.getUnchecked(i));
+        for (int i = 0; i < numWords; ++i) {
+            IntCollection elements = getValidElementsForExpansion(words.getUnchecked(i));
 
             if (elements != null) {
                 elements.forEach(extensionWordIdsAdder);
             }
         }
 
-        IntArrayList words = getWords();
-        int numWords = getNumWords();
-
         // Clean the words that are already in the embedding
         for (int i = 0; i < numWords; ++i) {
             int wId = words.getUnchecked(i);
             extensionWordIds.removeInt(wId);
         }
-
     }
 
     protected void updateContractibleWordIdsSimple() {
-        IntArrayList vertices = getVertices();
-        int numVertices = getNumVertices();
-
+        IntArrayList words = getWords();
+        int numWords = getNumWords();
         contractionWordIds.clear();
 
-        // if embedding has no vertices, there is not contractions possible
-        if (numVertices == 0) return;
+        // if embedding has no words, there is not contractions possible
+        if (numWords == 0) return;
 
-        IntCollection elements = getValidElementsForContraction(vertices.getUnchecked(0));
+        IntCollection elements = getValidElementsForContraction(words.getUnchecked(0));
 
         if (elements != null)
           elements.forEach(contractionWordIdsAdder);
@@ -269,7 +265,7 @@ public abstract class BasicEmbedding implements Embedding {
 
     protected abstract boolean areWordsNeighbours(int wordId1, int wordId2);
 
-    protected abstract int getTotalNumWords();
+    public abstract int getTotalNumWords();
 
     protected abstract IntCollection getValidElementsForExpansion(int vId);
 
@@ -326,5 +322,54 @@ public abstract class BasicEmbedding implements Embedding {
     @Override
     public int hashCode() {
         return Objects.hash(vertices, edges);
+    }
+
+    public boolean isAutomorphic(Object o) {
+        BasicEmbedding that = (BasicEmbedding) o;
+        if (this.getNumEdges() != that.getNumEdges()) return false;
+        int size = this.getNumEdges();
+
+        IntArrayList edges = getEdges();
+        int edgesArray[] = Arrays.copyOf(edges.getBackingArray(), size);
+        Arrays.sort(edgesArray);
+
+        IntArrayList otherEdges = that.getEdges();
+        int otherEdgesArray[] = Arrays.copyOf(otherEdges.getBackingArray(), size);
+        Arrays.sort(otherEdgesArray);
+
+        int i = 0;
+        while (i < size) {
+            if (edgesArray[i]!=otherEdgesArray[i])
+                return false;
+            i++;
+        }
+        return true;
+    }
+
+    public IntArrayList getSharedWordIds(BasicEmbedding embedding) {
+        IntArrayList shared = new IntArrayList();
+        IntArrayList words = this.getWords();
+        IntArrayList otherWords = embedding.getWords();
+
+        int wordsArray[] = Arrays.copyOf(words.getBackingArray(), this.getNumWords());
+        Arrays.sort(wordsArray);
+
+        int otherWordsArray[] = Arrays.copyOf(otherWords.getBackingArray(), embedding.getNumWords());
+        Arrays.sort(otherWordsArray);
+
+        int i=0, j=0;
+        while (i < this.getNumWords() && j < embedding.getNumWords()) {
+            if (wordsArray[i] == otherWordsArray[j]) {
+                shared.add(wordsArray[i]);
+                i++;
+                j++;
+            }
+            else if (wordsArray[i] < otherWordsArray[j])
+                i++;
+            else
+                j++;
+        }
+
+        return shared;
     }
 }
