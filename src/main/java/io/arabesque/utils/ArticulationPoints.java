@@ -27,6 +27,7 @@ public class ArticulationPoints {
 
    // aux structures, if possible we reuse them for futures executions
    private boolean visited[];
+   private IntArrayList order;
    private IntArrayList disc;
    private IntArrayList low;
    private IntArrayList parent;
@@ -52,6 +53,7 @@ public class ArticulationPoints {
       low = createOrEnsureCapacity (low, numMax);
       parent = createOrEnsureCapacity (parent, numMax);
       ap = createOrEnsureCapacity (ap, numMax);
+      order = new IntArrayList();
       this.vertices = embedding.getVertices();
       this.edges = embedding.getEdges();
       reset();
@@ -178,6 +180,28 @@ public class ArticulationPoints {
       }
    }
 
+   private void dfsRec(int u) {
+      // number of children in the DFS
+
+      // visiting new node
+      visited[u] = true;
+      order.add(edges.getUnchecked(u));
+
+      for (int v = 0; v < edges.size(); ++v) {
+         // here we verify whether each vertice is adjacent to each vertice
+         // In practive (embeddings << graph) this is better than accessing
+         // directly the whole graph adjacency (the only one available)
+         //System.out.println("Check if Neighbors " + u + " " + v);
+         if (!mainGraph.areEdgesNeighbors(edges.getUnchecked(u),
+                 edges.getUnchecked(v)))
+            continue;
+
+         if (!visited[v]) {
+            dfsRec(v);
+         }
+      }
+   }
+
    /**
     * Clients call for articulation points of an embedding
     */
@@ -191,7 +215,7 @@ public class ArticulationPoints {
    }
 
    /**
-    * Clients call for articulation points of an embedding
+    * Clients call for articulation brigdes of an embedding
     */
    public boolean[] articulationBrigdes(Embedding embedding) {
       setFromEmbedding(embedding);
@@ -204,4 +228,22 @@ public class ArticulationPoints {
       }
       return ap;
    }
+
+   /**
+    * Clients call for dfs order of an embedding
+    */
+   public IntArrayList dfs(Embedding embedding) {
+      setFromEmbedding(embedding);
+
+      //System.out.println("Bridges");
+      for (int u = 0; u < edges.size(); ++u) {
+         //System.out.println("Start from edge: " + u);
+         if (visited[u] == false)
+            dfsRec(u);
+      }
+      return order;
+   }
+
+
 }
+

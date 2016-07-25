@@ -1,14 +1,14 @@
-package io.arabesque.gmlib.sampling;
+package io.arabesque.gmlib.motif;
 
 import io.arabesque.aggregation.AggregationStorage;
 import io.arabesque.computation.MasterComputation;
 import io.arabesque.conf.Configuration;
 import io.arabesque.pattern.Pattern;
-import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.LongWritable;
 
-public class SamplingMasterComputation extends MasterComputation {
+public class MotifMasterComputation extends MasterComputation {
 
-    private static final String MAXSTEP = "arabesque.sampling.maxstep";
+    private static final String MAXSTEP = "arabesque.motif.maxstep";
     private static final int MAXTSTEP_DEFAULT = 10;
 
     private int maxstep;
@@ -22,9 +22,8 @@ public class SamplingMasterComputation extends MasterComputation {
     public void compute() {
         System.out.println("Sampling Master computing");
 
-        //if (getStep() != maxstep ) return;
-        AggregationStorage<Pattern, DoubleWritable> aggregationStorage =
-                readAggregation(MotifEdgeSFSamplingComputation.AGG_SAMPLING);
+        AggregationStorage<Pattern, LongWritable> aggregationStorage =
+                readAggregation(MotifEdgeComputation.AGG_MOTIFS);
 
         System.out.println("Aggregation Storage: " + aggregationStorage);
 

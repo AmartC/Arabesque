@@ -42,10 +42,13 @@ abstract class SparkMasterEngine(config: SparkConfiguration[_ <: Embedding])
       previousAggregations: Map[String,AggregationStorage[_ <: Writable, _ <: Writable]])
   : Map[String,AggregationStorage[_ <: Writable,_ <: Writable]] = if (config.isAggregationIncremental) {
     // we compose all entries
+    println("BLA mergeOR")
     previousAggregations.foreach {case (k,v) => aggregations.update (k,v)}
+    println("SIZEAGG new: " + aggregations("sampling").getNumberMappings)
     aggregations
   } else {
     // we replace with new entries
+    println("SIZEAGG previous: " + previousAggregations("sampling").getNumberMappings)
     previousAggregations
   }
 

@@ -97,6 +97,8 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
     aggAccums.update (AGG_EMBEDDINGS_OUTPUT,
       sc.accumulator [Long] (0L, AGG_EMBEDDINGS_OUTPUT))
 
+    aggregations = Map.empty
+
   }
 
   override def haltComputation() = {

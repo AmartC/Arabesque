@@ -1,12 +1,12 @@
 package io.arabesque.gmlib.motif;
 
 import io.arabesque.aggregation.reductions.LongSumReduction;
-import io.arabesque.computation.VertexInducedComputation;
+import io.arabesque.computation.EdgeInducedComputation;
 import io.arabesque.conf.Configuration;
-import io.arabesque.embedding.VertexInducedEmbedding;
+import io.arabesque.embedding.EdgeInducedEmbedding;
 import org.apache.hadoop.io.LongWritable;
 
-public class MotifComputation extends VertexInducedComputation<VertexInducedEmbedding> {
+public class MotifEdgeComputation extends EdgeInducedComputation<EdgeInducedEmbedding> {
     public static final String AGG_MOTIFS = "motifs";
     private static final String MAXSIZE = "arabesque.motif.maxsize";
     private static final int MAXSIZE_DEFAULT = 4;
@@ -31,12 +31,12 @@ public class MotifComputation extends VertexInducedComputation<VertexInducedEmbe
     }
 
     @Override
-    public boolean shouldModify(VertexInducedEmbedding embedding) {
-        return embedding.getNumVertices() < maxsize;
+    public boolean shouldModify(EdgeInducedEmbedding embedding) {
+        return embedding.getNumEdges() < maxsize;
     }
 
     @Override
-    public void process(VertexInducedEmbedding embedding) {
+    public void process(EdgeInducedEmbedding embedding) {
         if (embedding.getNumWords() == maxsize) {
             System.out.println("ewords: " + embedding.getWords());
             output(embedding);

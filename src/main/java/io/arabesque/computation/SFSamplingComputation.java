@@ -20,15 +20,16 @@ public abstract class SFSamplingComputation<E extends BasicEmbedding> extends Ba
     protected int samplesize;
     protected int maxsize;
 
-    protected static final String SAMPLESIZE = "arabesque.motif.samplesize";
-    protected static final String MAXSIZE = "arabesque.motif.maxsize";
+    protected static final String SAMPLESIZE = "arabesque.sampling.samplesize";
+    protected static final String MAXSIZE = "arabesque.sampling.maxsize";
     protected static final int SAMPLESIZE_DEFAULT = 100;
     protected static final int MAXSIZE_DEFAULT = 4;
 
     @Override
     public void init() {
         super.init();
-        r = new Random(getPartitionId()); // TODO: custom seed?
+        //r = new Random(getPartitionId()); // TODO: custom seed?
+        r = new Random(System.currentTimeMillis()); // TODO: custom seed?
         samplesize = Configuration.get().getInteger(SAMPLESIZE, SAMPLESIZE_DEFAULT);
         maxsize = Configuration.get().getInteger(MAXSIZE, MAXSIZE_DEFAULT);
     }
@@ -81,46 +82,32 @@ public abstract class SFSamplingComputation<E extends BasicEmbedding> extends Ba
         //System.out.println("Orig 2: " + currentEmbedding.toOutputString());
     }
 
-    private int modificationsSize(int[] modifications) {
-        int i = 0, size = 0;
-        while (i < modifications.length) {
-            if (modifications[i] == -1) // all words
-                size += currentEmbedding.getTotalNumWords();
-            else if (modifications[i] < 0)
-                size += (-1) * modifications[i];
-            else
-                size++;
-            i++;
-        }
-        return size;
+    private int modificationsSize(E embedding, int[] modifications) {
+        int i = 0;
+
+        if (modifications.length == 0) return 0;
+        else if (modifications[i] == -1) // all words
+            return embedding.getTotalNumWords();
+        else if (modifications[i] < 0)
+            return (-1) * modifications[i];
+
+        return modifications.length;
     }
 
-    protected int nextModification(int[] modifications, int upperBound) {
+    protected int nextModification(E embedding, int[] modifications, int upperBound) {
         int rdIdx = r.nextInt(upperBound);
         int i = 0, j = 0;
 
-        int weights[] = new int[upperBound];
-
         if (modifications[i] == -1) {
-            if (j + currentEmbedding.getTotalNumWords() > rdIdx)
-                return rdIdx - j;
-            else
-                j += currentEmbedding.getTotalNumWords();
+                return rdIdx;
         } else if (modifications[i] < 0) {
-            if (j + (-1 * modifications[i]) > rdIdx)
-                for (int k = 0; k < (-1 * modifications[i]); k++) {
-                    int nextRd = r.nextInt (getInitialNumWords());
-                    if (j + k == rdIdx) return nextRd;
-                }
+            int nextRd = r.nextInt (getInitialNumWords());
+            return nextRd;
         } else {
+            int weights[] = new int[upperBound];
             int accW = 0;
             for (i = 0; i < upperBound;++i) {
-                currentEmbedding.addWord(modifications[i]);
-                IntCollection contractions = currentEmbedding.getContractibleWordIds();
-                //System.out.println("Possible contractions with mod. " + modifications[i] + " : " + contractions);
-                contractions.removeInt(modifications[i]);
-                weights[i] = contractions.size();
-                currentEmbedding.removeWord(modifications[i]);
+                weights[i] = getNumberOfModificationsByAddWord(embedding,modifications[i]);
                 accW += weights[i];
             }
             assert (accW > 0);
@@ -140,13 +127,13 @@ public abstract class SFSamplingComputation<E extends BasicEmbedding> extends Ba
     public void filter(E existingEmbedding, IntCollection modificationPoints) {
 
         int[] modificationsArray = modificationPoints.toIntArray();
-        int previousDegree = modificationsSize (modificationsArray);
+        int previousDegree = modificationsSize (existingEmbedding, modificationsArray);
         if (previousDegree == 0) {
             existingEmbedding.reset();
             return;
         }
 
-        int nextModification = nextModification(modificationsArray,previousDegree);
+        int nextModification = nextModification(existingEmbedding,modificationsArray,previousDegree);
 
         modificationPoints.clear();
         modificationPoints.add(nextModification);
@@ -188,6 +175,29 @@ public abstract class SFSamplingComputation<E extends BasicEmbedding> extends Ba
     protected IntCollection getPossibleModifications(E embedding) {
         IntCollection possibleModifications = getPossibleExtensions(embedding);
         return possibleModifications;
+    }
+
+    protected int getNumberOfEmbeddingsNeighbors(E embedding) {
+        IntCollection modificationPoints = embedding.getExtensibleWordIds();
+        int[] modificationsArray = modificationPoints.toIntArray();
+        int previousDegree = modificationsSize (embedding, modificationsArray);
+
+        int degree = 0;
+        for (int i = 0; i < previousDegree;++i) {
+            degree+=getNumberOfModificationsByAddWord(embedding,modificationsArray[i]);
+        }
+        return degree;
+    }
+
+    private int getNumberOfModificationsByAddWord(E embedding, int wordId) {
+        embedding.addWord(wordId);
+        IntCollection contractions = embedding.getContractibleWordIds();
+        //System.out.println("Possible contractions with mod. " + modifications[i] + " : " + contractions);
+        embedding.removeWord(wordId);
+
+        contractions.removeInt(wordId);
+        return contractions.size();
+
     }
 }
 

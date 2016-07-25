@@ -1,15 +1,15 @@
 package io.arabesque.embedding;
 
 import io.arabesque.graph.Edge;
-import io.arabesque.graph.MainGraph;
 import io.arabesque.utils.ArticulationPoints;
 import io.arabesque.utils.collection.IntArrayList;
 import net.openhft.koloboke.collect.IntCollection;
+import net.openhft.koloboke.collect.set.hash.HashIntSet;
+import net.openhft.koloboke.collect.set.hash.HashIntSets;
 
 import java.io.DataInput;
 import java.io.ObjectInput;
 import java.io.IOException;
-import java.util.Arrays;
 
 public class EdgeInducedEmbedding extends BasicEmbedding {
     private IntArrayList numVerticesAddedWithWord;
@@ -34,6 +34,12 @@ public class EdgeInducedEmbedding extends BasicEmbedding {
     public void setFromEmbedding(Embedding other) {
        super.setFromEmbedding(other);
        numVerticesAddedWithWord = other.getNumWordsAddedWithWord();
+    }
+
+    @Override
+    public void copy(Embedding other) {
+       super.copy(other);
+        numVerticesAddedWithWord = new IntArrayList(other.getNumWordsAddedWithWord());
     }
 
     @Override
@@ -160,9 +166,10 @@ public class EdgeInducedEmbedding extends BasicEmbedding {
             return;
         }
 
+        edges.removeLast();
+
         int numVerticesToRemove = numVerticesAddedWithWord.pop();
         vertices.removeLast(numVerticesToRemove);
-        edges.removeLast();
 
         super.removeLastWord();
     }
@@ -178,17 +185,33 @@ public class EdgeInducedEmbedding extends BasicEmbedding {
             return;
         }
 
+        if (edges.getLast() == word) {
+            removeLastWord();
+            return;
+        }
+
         IntArrayList words = getWords();
         int numWords = words.size();
-
         int idx = 0;
         while (idx < numWords) {
             if (word == words.getUnchecked(idx))
                 break;
             idx++;
         }
-        updateVerticesDeletion(idx);
+
+        if (idx == numWords) {
+            System.out.println("Problem Emb:" + edges + " word to remove:" + word);
+        }
+        assert (idx != numWords);
+
+        if (edges.size() != numVerticesAddedWithWord.size()) {
+            System.out.println("Problem Emb:" + edges + " numVerticesAddedWithWord:" + numVerticesAddedWithWord);
+        }
+        assert(edges.size()==numVerticesAddedWithWord.size());
+
+
         edges.remove(idx);
+        updateVerticesDeletion(idx);
 
         super.removeWord(word);
     }
@@ -201,41 +224,163 @@ public class EdgeInducedEmbedding extends BasicEmbedding {
      */
     private void updateVerticesDeletion(int positionDeleted) {
         final int numEdges = getNumEdges();
-        final int numVerticesAdded = numVerticesAddedWithWord.getUnchecked(positionDeleted);
 
-        assert (numVerticesAdded!=2 || positionDeleted==0); // only the first edge can add 2 vertices
-
-        if (numVerticesAdded==0) return;
-
-        if (positionDeleted==0) {
-            if (numEdges>1) {
-                numVerticesAddedWithWord.remove(0);
-                numVerticesAddedWithWord.setUnchecked(0, numVerticesAddedWithWord.getUnchecked(0)+1);
-            } else {
-                vertices.clear();
-                numVerticesAddedWithWord.clear();
-            }
+        if (numVerticesAddedWithWord.getUnchecked(positionDeleted)==0) {
+            numVerticesAddedWithWord.remove(positionDeleted);
             return;
         }
 
+        IntArrayList order = articRunner.dfs(this);
+        HashIntSet addedVertices = HashIntSets.newMutableSet();
+        IntArrayList newEdges = new IntArrayList();
+
+        vertices.clear();
+        numVerticesAddedWithWord.clear();
+        for (int i = 0; i < numEdges; i++) {
+            newEdges.add(order.getUnchecked(i));
+            Edge edge  = mainGraph.getEdge(order.getUnchecked(i));
+            int numAdded = 0;
+            if (addedVertices.add(edge.getSourceId())) {
+                numAdded++;
+                vertices.add(edge.getSourceId());
+            }
+            if (addedVertices.add(edge.getDestinationId())) {
+                numAdded++;
+                vertices.add(edge.getDestinationId());
+            }
+            numVerticesAddedWithWord.add(numAdded);
+        }
+
+        edges = newEdges;
+    }
+    /*
+    private void updateVerticesDeletion(int positionDeleted) {
+        final int numEdges = getNumEdges();
+        final int numVertices = getNumVertices();
+        final int numVerticesAdded = numVerticesAddedWithWord.getUnchecked(positionDeleted);
+        final Edge edge  = mainGraph.getEdge(edges.getUnchecked(positionDeleted));
+
+        assert (numVerticesAdded==2 && positionDeleted!=0); // only the first edge can add 2 vertices
+
+        if (numVerticesAdded==0) {
+            numVerticesAddedWithWord.remove(positionDeleted);
+            return;
+        }
+
+
+        final int vertexSrc = edge.getSourceId();
+        final int vertexDest = edge.getDestinationId();
+
+        int vertexSrcPos = -1;
+        int vertexDestPos = -1;
+        int firstEdgeSrcPos = -1;
+        int firstEdgeDestPos = -1;
+        int newVertexSrcPos = -1;
+        int newVertexDestPos = -1;
+
+        boolean isVertexSrcDeleted = true;
+        boolean isVertexDestDeleted = true;
+
+        System.out.println("Src Id: " + vertexSrc);
+        System.out.println("Dest Id: " + vertexDest);
+
+        System.out.println("Vertices: " + vertices);
+        System.out.println("Edges: " + edges);
+        System.out.println("getNumWordsAddedWithWord: " + numVerticesAddedWithWord);
+
         int j = 0, i = 0;
-        while (i < positionDeleted) {
+        while (i < numEdges) {
+            Edge secondEdge  = mainGraph.getEdge(edges.getUnchecked(i));
+
+            if (secondEdge.hasVertex(vertexSrc)) {
+                if (i!=positionDeleted && isVertexSrcDeleted) {
+                    isVertexSrcDeleted = false;
+                    firstEdgeSrcPos = i;
+                    newVertexSrcPos = j;
+                }
+                if (vertexSrcPos == -1) {
+                    for (int k = 0; k < numVerticesAddedWithWord.getUnchecked(i); k++)
+                        if (vertices.getUnchecked(j+k)==vertexSrc) vertexSrcPos=j+k;
+                    assert(vertexSrcPos!=-1);
+                    System.out.println("src j: " + j + " vertexSrcPos: " + vertexSrcPos);
+                }
+            }
+
+            if (secondEdge.hasVertex(vertexDest)) {
+                if (i!=positionDeleted && isVertexDestDeleted) {
+                    isVertexDestDeleted = false;
+                    firstEdgeDestPos = i;
+                    newVertexDestPos = j;
+                }
+                if (vertexDestPos == -1) {
+                    for (int k = 0; k < numVerticesAddedWithWord.getUnchecked(i); k++)
+                        if (vertices.getUnchecked(j+k)==vertexDest) vertexDestPos=j+k;
+                    assert(vertexDestPos!=-1);
+                    System.out.println("dest j: " + j + " vertexDestPos: " + vertexDestPos);
+                }
+            }
+
             j += numVerticesAddedWithWord.getUnchecked(i);
             i++;
         }
-        final int deletedVertex = vertices.getUnchecked(j);
 
-        i++; // skip the deleted edge
-        while (i < numEdges) {
-            Edge edge = mainGraph.getEdge(edges.getUnchecked(i));
-            if (edge.hasVertex(deletedVertex)) {
-                numVerticesAddedWithWord.setUnchecked(i, numVerticesAddedWithWord.getUnchecked(i)+1);
-            }
-            i++;
+        assert(isVertexSrcDeleted==false || isVertexDestDeleted == false);
+        assert(vertexSrcPos!=-1 && vertexDestPos!=-1);
+
+        System.out.println("src " + vertexSrc + " vertexSrcPos: " + vertexSrcPos +
+                " newVertexSrcPos: " + newVertexSrcPos + " firstEdgeSrcPos: " + firstEdgeSrcPos);
+        System.out.println("dest " + vertexDest + " vertexDestPos: " + vertexDestPos +
+                " newVertexDestPos: " + newVertexDestPos + " firstEdgeDestPos: " + firstEdgeDestPos);
+        //src vertex
+        if (!isVertexSrcDeleted) {
+            int aux = numVerticesAddedWithWord.get(firstEdgeSrcPos);
+            numVerticesAddedWithWord.setUnchecked(firstEdgeSrcPos, aux + 1);
+            int min = Math.min(newVertexSrcPos, vertexSrcPos);
+            int max = Math.max(newVertexSrcPos, vertexSrcPos);
+            swiftVertices(min, max-1);
         }
+
+        //dest vertex
+        if (!isVertexDestDeleted) {
+            int aux = numVerticesAddedWithWord.get(firstEdgeDestPos);
+            numVerticesAddedWithWord.setUnchecked(firstEdgeDestPos, aux + 1);
+            int min = Math.min(newVertexDestPos, vertexDestPos);
+            int max = Math.max(newVertexDestPos, vertexDestPos);
+            swiftVertices(min, max);
+        }
+
+        if (isVertexSrcDeleted)
+            vertices.removeInt(vertexSrc);
+        if (isVertexDestDeleted)
+            vertices.removeInt(vertexDest);
+
         numVerticesAddedWithWord.remove(positionDeleted);
     }
 
+    private void swiftVertices(int srcIdx, int destIdx) {
+
+        System.out.println("srcIdx:" + srcIdx + " destIdx:" + destIdx);
+
+        if (srcIdx < destIdx) {
+            int i = srcIdx;
+            while (i < destIdx - 1) {
+                int aux = vertices.getUnchecked(i);
+                vertices.setUnchecked(i, vertices.getUnchecked(i + 1));
+                vertices.setUnchecked(i + 1, aux);
+                i++;
+            }
+        }
+        else {
+            int i = srcIdx;
+            while (i > destIdx ) {
+                int aux = vertices.getUnchecked(i);
+                vertices.setUnchecked(i, vertices.getUnchecked(i - 1));
+                vertices.setUnchecked(i - 1, aux);
+                i--;
+            }
+        }
+
+    }*/
 
     @Override
     public void readFields(DataInput in) throws IOException {

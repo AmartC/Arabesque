@@ -91,7 +91,6 @@ public abstract class BasicEmbedding implements Embedding {
         extensionWordIds = HashIntSets.newMutableSet();
         contractionWordIds = HashIntSets.newMutableSet();
         previousExtensionCalculationVertices = new IntArrayList();
-
         extensionWordIdsPerPos = new ObjArrayList<>();
 
         reset();
@@ -117,6 +116,13 @@ public abstract class BasicEmbedding implements Embedding {
        vertices = other.getVertices();
        edges = other.getEdges();
        setDirty();
+    }
+
+
+    public void copy(Embedding other) {
+        vertices.addAll(other.getVertices());
+        edges.addAll(other.getEdges());
+        setDirty();
     }
 
     @Override
