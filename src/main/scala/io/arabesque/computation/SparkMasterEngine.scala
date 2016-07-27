@@ -44,11 +44,11 @@ abstract class SparkMasterEngine(config: SparkConfiguration[_ <: Embedding])
     // we compose all entries
     println("BLA mergeOR")
     previousAggregations.foreach {case (k,v) => aggregations.update (k,v)}
-    println("SIZEAGG new: " + aggregations("sampling").getNumberMappings)
+    //println("SIZEAGG new: " + aggregations("sampling").getNumberMappings)
     aggregations
   } else {
     // we replace with new entries
-    println("SIZEAGG previous: " + previousAggregations("sampling").getNumberMappings)
+    //println("SIZEAGG previous: " + previousAggregations("sampling").getNumberMappings)
     previousAggregations
   }
 

@@ -5,6 +5,7 @@ import io.arabesque.computation.MasterComputation;
 import io.arabesque.conf.Configuration;
 import io.arabesque.pattern.Pattern;
 import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.LongWritable;
 
 public class SamplingMasterComputation extends MasterComputation {
 
@@ -24,6 +25,7 @@ public class SamplingMasterComputation extends MasterComputation {
 
         //if (getStep() != maxstep ) return;
         AggregationStorage<Pattern, DoubleWritable> aggregationStorage =
+        //AggregationStorage<Pattern, LongWritable> aggregationStorage =
                 readAggregation(MotifEdgeSFSamplingComputation.AGG_SAMPLING);
 
         System.out.println("Aggregation Storage: " + aggregationStorage);
