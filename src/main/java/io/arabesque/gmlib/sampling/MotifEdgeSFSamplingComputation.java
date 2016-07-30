@@ -21,8 +21,8 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
     private static final int MAXTSTEP_DEFAULT = 10;
     private static final int AGGSTEP_DEFAULT = 5;
 
-    //private static DoubleWritable reusableDoubleWritableUnit = new DoubleWritable(1);
-    private static LongWritable reusableLongWritableUnit = new LongWritable(1);
+    private static DoubleWritable reusableDoubleWritableUnit = new DoubleWritable(1);
+    //private static LongWritable reusableLongWritableUnit = new LongWritable(1);
 
     private int maxsize;
     private int maxstep;
@@ -40,8 +40,8 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
     public void initAggregations() {
         super.initAggregations();
         Configuration conf = Configuration.get();
-        //conf.registerAggregation(AGG_SAMPLING, conf.getPatternClass(), DoubleWritable.class, true, new DoubleSumReduction());
-        conf.registerAggregation(AGG_SAMPLING, conf.getPatternClass(), LongWritable.class, true, new LongSumReduction());
+        conf.registerAggregation(AGG_SAMPLING, conf.getPatternClass(), DoubleWritable.class, true, new DoubleSumReduction());
+        //conf.registerAggregation(AGG_SAMPLING, conf.getPatternClass(), LongWritable.class, false, new LongSumReduction());
     }
 
     public boolean shouldModify(EdgeInducedEmbedding embedding) {
@@ -55,9 +55,9 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
             output(embedding);
             System.out.println("ewords: " + embedding.getWords());
 
-            //reusableDoubleWritableUnit.set(getGroupFactors(embedding));
-            //map(AGG_SAMPLING, embedding.getPattern(), reusableDoubleWritableUnit);
-            map(AGG_SAMPLING, embedding.getPattern(), reusableLongWritableUnit);
+            reusableDoubleWritableUnit.set(getGroupFactors(embedding));
+            map(AGG_SAMPLING, embedding.getPattern(), reusableDoubleWritableUnit);
+            //map(AGG_SAMPLING, embedding.getPattern(), reusableLongWritableUnit);
         }
     }
 
