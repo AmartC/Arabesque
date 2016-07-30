@@ -40,15 +40,29 @@ abstract class SparkMasterEngine(config: SparkConfiguration[_ <: Embedding])
   def mergeOrReplaceAggregations (
       aggregations: Map[String,AggregationStorage[_ <: Writable, _ <: Writable]],
       previousAggregations: Map[String,AggregationStorage[_ <: Writable, _ <: Writable]])
-  : Map[String,AggregationStorage[_ <: Writable,_ <: Writable]] = if (config.isAggregationIncremental) {
-    // we compose all entries
-    println("BLA mergeOR")
-    previousAggregations.foreach {case (k,v) => aggregations.update (k,v)}
-    println("SIZEAGG new: " + aggregations("sampling").getNumberMappings)
+  : Map[String,AggregationStorage[_ <: Writable, _ <: Writable]] = if (config.isAggregationIncremental) {
+
+    // aux function that treats two storages as the same type in order to do
+    // aggregation
+    def aggregateStorage[K <: Writable, V <: Writable](
+        aggStorage1: AggregationStorage[K,V],
+        aggStorage2: AggregationStorage[_,_]): AggregationStorage[K,V] = {
+      aggStorage1.aggregate(aggStorage2.asInstanceOf[AggregationStorage[K,V]])
+      aggStorage1
+    }
+
+    // we aggregate with new mappings
+    previousAggregations.foreach { case (name,agg1) =>
+        aggregations.get(name) match {
+          case Some(agg2) =>
+            aggregateStorage (agg2, agg1)
+          case None =>
+            aggregations.update (name, agg1)
+        } 
+      }
     aggregations
   } else {
-    // we replace with new entries
-    println("SIZEAGG previous: " + previousAggregations("sampling").getNumberMappings)
+    // we replace with new mappings
     previousAggregations
   }
 
