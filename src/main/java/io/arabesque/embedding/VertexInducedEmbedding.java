@@ -251,4 +251,8 @@ public class VertexInducedEmbedding extends BasicEmbedding {
     public int getTotalNumWords(){
         return mainGraph.getNumberVertices();
     }
+
+    public IntArrayList getSharedWordIds(EdgeInducedEmbedding embedding) {
+        return getSharedVertexIds(embedding);
+    }
 }

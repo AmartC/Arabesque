@@ -405,4 +405,7 @@ public class EdgeInducedEmbedding extends BasicEmbedding {
         return mainGraph.getNumberEdges();
     }
 
+    public IntArrayList getSharedWordIds(EdgeInducedEmbedding embedding) {
+        return getSharedEdgeIds(embedding);
+    }
 }

@@ -22,15 +22,17 @@ public abstract class SFSamplingComputation<E extends BasicEmbedding> extends Ba
 
     protected static final String SAMPLESIZE = "arabesque.sampling.samplesize";
     protected static final String MAXSIZE = "arabesque.sampling.maxsize";
-    protected static final int SAMPLESIZE_DEFAULT = 100;
+    protected static final int SAMPLESIZE_DEFAULT = 1;
     protected static final int MAXSIZE_DEFAULT = 4;
 
     @Override
     public void init() {
         super.init();
         //r = new Random(getPartitionId()); // TODO: custom seed?
-        r = new Random(System.currentTimeMillis()); // TODO: custom seed?
+        //r = new Random(System.currentTimeMillis()); // TODO: custom seed?
+        r = new Random(); // TODO: custom seed?
         samplesize = Configuration.get().getInteger(SAMPLESIZE, SAMPLESIZE_DEFAULT);
+        //System.out.println("SAMPLESIZE: " + samplesize);
         maxsize = Configuration.get().getInteger(MAXSIZE, MAXSIZE_DEFAULT);
     }
 
@@ -166,6 +168,7 @@ public abstract class SFSamplingComputation<E extends BasicEmbedding> extends Ba
         //	i++;
         //}
         //
+
         initialExtensions.add(-1 * (samplesize/getNumberPartitions()));
 
         return initialExtensions;

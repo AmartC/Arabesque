@@ -352,30 +352,53 @@ public abstract class BasicEmbedding implements Embedding {
         return true;
     }
 
-    public IntArrayList getSharedWordIds(BasicEmbedding embedding) {
+    public IntArrayList getSharedEdgeIds(BasicEmbedding embedding) {
         IntArrayList shared = new IntArrayList();
-        IntArrayList words = this.getWords();
-        IntArrayList otherWords = embedding.getWords();
+        IntArrayList otherEdges = embedding.getEdges();
 
-        int wordsArray[] = Arrays.copyOf(words.getBackingArray(), this.getNumWords());
-        Arrays.sort(wordsArray);
+        int edgesArray[] = Arrays.copyOf(edges.getBackingArray(), this.getNumEdges());
+        Arrays.sort(edgesArray);
 
-        int otherWordsArray[] = Arrays.copyOf(otherWords.getBackingArray(), embedding.getNumWords());
-        Arrays.sort(otherWordsArray);
+        int otherEdgesArray[] = Arrays.copyOf(otherEdges.getBackingArray(), embedding.getNumEdges());
+        Arrays.sort(otherEdgesArray);
 
         int i=0, j=0;
-        while (i < this.getNumWords() && j < embedding.getNumWords()) {
-            if (wordsArray[i] == otherWordsArray[j]) {
-                shared.add(wordsArray[i]);
+        while (i < this.getNumEdges() && j < embedding.getNumEdges()) {
+            if (edgesArray[i] == otherEdgesArray[j]) {
+                shared.add(edgesArray[i]);
                 i++;
                 j++;
             }
-            else if (wordsArray[i] < otherWordsArray[j])
+            else if (edgesArray[i] < otherEdgesArray[j])
                 i++;
             else
                 j++;
         }
+        return shared;
+    }
 
+    public IntArrayList getSharedVertexIds(BasicEmbedding embedding) {
+        IntArrayList shared = new IntArrayList();
+        IntArrayList otherVertices = embedding.getVertices();
+
+        int verticesArray[] = Arrays.copyOf(vertices.getBackingArray(), this.getNumVertices());
+        Arrays.sort(verticesArray);
+
+        int otherVerticesArray[] = Arrays.copyOf(otherVertices.getBackingArray(), embedding.getNumVertices());
+        Arrays.sort(otherVerticesArray);
+
+        int i=0, j=0;
+        while (i < this.getNumVertices() && j < embedding.getNumVertices()) {
+            if (verticesArray[i] == otherVerticesArray[j]) {
+                shared.add(verticesArray[i]);
+                i++;
+                j++;
+            }
+            else if (verticesArray[i] < otherVerticesArray[j])
+                i++;
+            else
+                j++;
+        }
         return shared;
     }
 }

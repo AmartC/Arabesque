@@ -4,13 +4,14 @@ import io.arabesque.aggregation.reductions.DoubleSumReduction;
 import io.arabesque.computation.EdgeInducedSFSamplingComputation;
 import io.arabesque.conf.Configuration;
 import io.arabesque.embedding.EdgeInducedEmbedding;
+import io.arabesque.graph.Vertex;
 import io.arabesque.utils.collection.IntArrayList;
 import net.openhft.koloboke.collect.IntCollection;
 import org.apache.hadoop.io.DoubleWritable;
 
 import java.util.HashMap;
 
-public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputation<EdgeInducedEmbedding> {
+public class MajorAttributeClassSFSamplingComputation extends EdgeInducedSFSamplingComputation<EdgeInducedEmbedding> {
     public static final String AGG_SAMPLING = "sampling";
     private static final String MAXSIZE = "arabesque.sampling.maxsize";
     private static final String MAXSTEP = "arabesque.sampling.maxstep";
@@ -53,12 +54,11 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
     @Override
     public void process(EdgeInducedEmbedding embedding) {
         if (getStep() >= aggstep &&
-                embedding.getNumWords() == maxsize) {
+                embedding.getNumWords() == maxsize && isValid(embedding)) {
             output(embedding);
-            System.out.println("ewords: " + embedding.getWords());
+            //System.out.println("ewords: " + embedding.getWords());
 
             reusableDoubleWritableUnit.set(getGroupFactors(embedding));
-            //reusableDoubleWritableUnit.set(1.);
             map(AGG_SAMPLING, embedding.getPattern(), reusableDoubleWritableUnit);
             //map(AGG_SAMPLING, embedding.getPattern(), reusableLongWritableUnit);
         }
@@ -75,19 +75,15 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
 
         HashMap<IntArrayList, Integer> groups = new HashMap<>();
 
-        int steps=0;
         do {
             IntCollection exts = embeddingCopy.getExtensibleWordIds();
             int wordId = nextModification(embeddingCopy, exts.toIntArray(), exts.size());
             int rmWordId = processChange(embeddingCopy, wordId);
 
             //check if the new emb. belongs to same group
-            IntArrayList shared = embedding.getSharedWordIds(embeddingCopy);
+            IntArrayList shared = embedding.getSharedVertexIds(embeddingCopy);
 
-            if (shared.size() == embedding.getNumWords()) {
-                break; //identical embeddings then return
-            //} else if (shared.size() < embedding.getNumWords() - 1) {
-            } else if (embedding.getNumWords()-shared.size() > maxdiff) {
+            if (embedding.getNumVertices()-shared.size() > maxdiff) {
                 //restore the previous embedding
                 embeddingCopy.addWord(rmWordId);
                 embeddingCopy.removeWord(wordId);
@@ -101,7 +97,6 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
                     groups.put(shared, d + embeddingDegree);
                 }
             }
-            steps++;
         } while (!embeddingCopy.isAutomorphic(embedding));
 
         double factor = 0;
@@ -109,16 +104,29 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
             factor += 1 / i.doubleValue();
         }
 
-        System.out.println("factor 1: " + factor);
-
         int embeddingDegree = getNumberOfEmbeddingsNeighbors(embeddingCopy);
-        if (factor == 0) factor = 1;
+        if (factor == 0) factor = embeddingDegree;
         else factor *= embeddingDegree;
-
-        System.out.println("factor 2: " + factor);
-        System.out.println("RW Tour size: " + steps);
+        //System.out.println("RW Tour size: " + k);
         return factor;
     }
+
+    /*private boolean belongSamePattern(EdgeInducedEmbedding initialEmbedding, EdgeInducedEmbedding embedding) {
+        if (embedding.getPattern()!=initialEmbedding.getPattern())
+            return false;
+        return true;
+    }
+
+    private boolean belongSameGroup(EdgeInducedEmbedding initialEmbedding, EdgeInducedEmbedding embedding) {
+        IntArrayList shared = embedding.getSharedWordIds(embedding);
+        if (embedding.getNumWords()-shared.size() <= maxdiff)
+            return false;
+        return true;
+    }
+
+    private boolean canReachSameGroup(EdgeInducedEmbedding initialEmbedding, EdgeInducedEmbedding embedding) {
+        return true;
+    }*/
 
     private int processChange(EdgeInducedEmbedding embedding, int wordId) {
         embedding.addWord(wordId);
@@ -132,5 +140,29 @@ public class MotifEdgeSFSamplingComputation extends EdgeInducedSFSamplingComputa
         embedding.removeWord(contractionsArray[i]);
 
         return contractionsArray[i];
+    }
+
+    private boolean isValid(EdgeInducedEmbedding embedding) {
+
+        HashMap<Integer, Integer> labels = new HashMap<>();
+        IntArrayList vertices = embedding.getVertices();
+
+        for (int i = 0; i < vertices.size(); i++) {
+            Vertex v = mainGraph.getVertex(vertices.getUnchecked(i));
+            Integer l = v.getVertexLabel();
+            if (!labels.containsKey(l)) {
+                labels.put(l, 1);
+            } else {
+                //System.out.println("COLISION: " + l);
+                int d = labels.get(l);
+                labels.put(l, d + 1);
+            }
+        }
+        for (int i : labels.values()) {
+            if (i>vertices.size()/2)
+                return true;
+        }
+
+        return false;
     }
 }
