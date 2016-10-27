@@ -115,6 +115,16 @@ class ODAGMasterEngineSP [E <: Embedding] (_config: SparkConfiguration[E])
             map(tup => (tup._1,tup._2)).mkString("\n")}
           """)
 
+          logDebug (s"""Aggregations and sizes
+            ${aggregations.
+            map(tup => (tup._1,tup._2)).mkString("\n")}
+          """)
+
+          for ((k,agg) <- aggregations.iterator) {
+            val patternMapping = agg.getMapping
+            logDebug (s"patterns: ${patternMapping.mkString("\n")}")
+          }
+
           previousAggregationsBc.unpersist()
           previousAggregationsBc = sc.broadcast (previousAggregations)
 
@@ -226,7 +236,7 @@ class ODAGMasterEngineSP [E <: Embedding] (_config: SparkConfiguration[E])
       aggAccums: Map[String,Accumulator[_]],
       previousAggregationsBc: Broadcast[_]) = {
 
-    // read embeddings from global agg. ODAGs, expand, filter and process
+    // read embeddings from global agg. ODAGs, modify, filter and process
     val execEngines = superstepRDD.mapPartitionsWithIndex { (idx, _) =>
 
       configBc.value.initialize()

@@ -134,7 +134,6 @@ public class IntArrayList implements ReclaimableIntCollection, Writable {
                 return true;
             }
         }
-
         return false;
     }
 

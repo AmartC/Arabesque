@@ -519,7 +519,7 @@ public abstract class BasicPattern implements Pattern {
             return "0(" + vertex.getVertexLabel() + ")";
         }
         else {
-            return "";
+            return "empty";
         }
     }
 

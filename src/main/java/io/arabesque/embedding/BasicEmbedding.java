@@ -16,6 +16,7 @@ import net.openhft.koloboke.function.IntPredicate;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectOutput;
+import java.util.Arrays;
 import java.util.Objects;
 
 public abstract class BasicEmbedding implements Embedding {
@@ -25,7 +26,9 @@ public abstract class BasicEmbedding implements Embedding {
 
     // Extension helper structures {{
     protected HashIntSet extensionWordIds;
+    protected HashIntSet contractionWordIds;
     protected boolean dirtyExtensionWordIds;
+    protected boolean dirtyContractibleWordIds;
     protected ObjArrayList<IntArrayList> extensionWordIdsPerPos;
     protected IntArrayList previousExtensionCalculationVertices;
 
@@ -33,6 +36,13 @@ public abstract class BasicEmbedding implements Embedding {
         @Override
         public void accept(int i) {
             extensionWordIds.add(i);
+        }
+    };
+
+    private IntConsumer contractionWordIdsAdder = new IntConsumer() {
+        @Override
+        public void accept(int i) {
+            contractionWordIds.add(i);
         }
     };
 
@@ -79,8 +89,8 @@ public abstract class BasicEmbedding implements Embedding {
         mainGraph = Configuration.get().getMainGraph();
 
         extensionWordIds = HashIntSets.newMutableSet();
+        contractionWordIds = HashIntSets.newMutableSet();
         previousExtensionCalculationVertices = new IntArrayList();
-
         extensionWordIdsPerPos = new ObjArrayList<>();
 
         reset();
@@ -98,6 +108,21 @@ public abstract class BasicEmbedding implements Embedding {
     protected void setDirty() {
         dirtyPattern = true;
         dirtyExtensionWordIds = true;
+        dirtyContractibleWordIds = true;
+    }
+
+    @Override
+    public void setFromEmbedding(Embedding other) {
+       vertices = other.getVertices();
+       edges = other.getEdges();
+       setDirty();
+    }
+
+
+    public void copy(Embedding other) {
+        vertices.addAll(other.getVertices());
+        edges.addAll(other.getEdges());
+        setDirty();
     }
 
     @Override
@@ -138,30 +163,74 @@ public abstract class BasicEmbedding implements Embedding {
         }
 
         return extensionWordIds;
+        //return HashIntSets.newMutableSet(extensionWordIds.toIntArray());
+    }
+
+    @Override
+    public IntCollection getContractibleWordIds() {
+        // If we have to recompute the contractionVertexIds set
+        if (dirtyContractibleWordIds) {
+            updateContractibleWordIdsSimple();
+        }
+
+        return contractionWordIds;
     }
 
     protected void updateExtensibleWordIdsSimple() {
-        IntArrayList vertices = getVertices();
-        int numVertices = getNumVertices();
+        IntArrayList words = getWords();
+        int numWords = getNumWords();
 
         extensionWordIds.clear();
 
-        for (int i = 0; i < numVertices; ++i) {
-            IntCollection neighbourhood = getValidNeighboursForExpansion(vertices.getUnchecked(i));
-
-            if (neighbourhood != null) {
-                neighbourhood.forEach(extensionWordIdsAdder);
-            }
+        if (numWords==0) {
+            //int totalNumWords = getTotalNumWords();
+            //for (int i = 0; i < totalNumWords; ++i)
+            //    extensionWordIds.add(i);
+            extensionWordIds.add(-1); // all words
+            return;
         }
 
-        IntArrayList words = getWords();
-        int numWords = getNumWords();
+        for (int i = 0; i < numWords; ++i) {
+            IntCollection elements = getValidElementsForExpansion(words.getUnchecked(i));
+
+            if (elements != null) {
+                elements.forEach(extensionWordIdsAdder);
+            }
+        }
 
         // Clean the words that are already in the embedding
         for (int i = 0; i < numWords; ++i) {
             int wId = words.getUnchecked(i);
             extensionWordIds.removeInt(wId);
         }
+    }
+
+    protected void updateContractibleWordIdsSimple() {
+        IntArrayList words = getWords();
+        int numWords = getNumWords();
+        contractionWordIds.clear();
+
+        // if embedding has no words, there is not contractions possible
+        if (numWords == 0) return;
+
+        IntCollection elements = getValidElementsForContraction(words.getUnchecked(0));
+
+        if (elements != null)
+          elements.forEach(contractionWordIdsAdder);
+    }
+
+    public boolean existWord(int wordId) {
+        IntArrayList words = getWords();
+        return words.contains(wordId);
+    }
+
+    public boolean existDuplicateWord() {
+       HashIntSet set = HashIntSets.newMutableSet ();
+       for (int w : getWords()) {
+          if(!set.add(w))
+             return true;
+       }
+       return false;
     }
 
     @Override
@@ -202,7 +271,11 @@ public abstract class BasicEmbedding implements Embedding {
 
     protected abstract boolean areWordsNeighbours(int wordId1, int wordId2);
 
-    protected abstract IntCollection getValidNeighboursForExpansion(int vId);
+    public abstract int getTotalNumWords();
+
+    protected abstract IntCollection getValidElementsForExpansion(int vId);
+
+    protected abstract IntCollection getValidElementsForContraction(int vId);
 
     @Override
     public void addWord(int word) {
@@ -213,6 +286,9 @@ public abstract class BasicEmbedding implements Embedding {
     public void removeLastWord() {
         setDirty();
     }
+
+    @Override
+    public void removeWord(int word) { setDirty(); }
 
     @Override
     public String toString() {
@@ -236,6 +312,10 @@ public abstract class BasicEmbedding implements Embedding {
         return pattern;
     }
 
+    public int getLastWord(){
+        return getWords().getLast();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -248,5 +328,77 @@ public abstract class BasicEmbedding implements Embedding {
     @Override
     public int hashCode() {
         return Objects.hash(vertices, edges);
+    }
+
+    public boolean isAutomorphic(Object o) {
+        BasicEmbedding that = (BasicEmbedding) o;
+        if (this.getNumEdges() != that.getNumEdges()) return false;
+        int size = this.getNumEdges();
+
+        IntArrayList edges = getEdges();
+        int edgesArray[] = Arrays.copyOf(edges.getBackingArray(), size);
+        Arrays.sort(edgesArray);
+
+        IntArrayList otherEdges = that.getEdges();
+        int otherEdgesArray[] = Arrays.copyOf(otherEdges.getBackingArray(), size);
+        Arrays.sort(otherEdgesArray);
+
+        int i = 0;
+        while (i < size) {
+            if (edgesArray[i]!=otherEdgesArray[i])
+                return false;
+            i++;
+        }
+        return true;
+    }
+
+    public IntArrayList getSharedEdgeIds(BasicEmbedding embedding) {
+        IntArrayList shared = new IntArrayList();
+        IntArrayList otherEdges = embedding.getEdges();
+
+        int edgesArray[] = Arrays.copyOf(edges.getBackingArray(), this.getNumEdges());
+        Arrays.sort(edgesArray);
+
+        int otherEdgesArray[] = Arrays.copyOf(otherEdges.getBackingArray(), embedding.getNumEdges());
+        Arrays.sort(otherEdgesArray);
+
+        int i=0, j=0;
+        while (i < this.getNumEdges() && j < embedding.getNumEdges()) {
+            if (edgesArray[i] == otherEdgesArray[j]) {
+                shared.add(edgesArray[i]);
+                i++;
+                j++;
+            }
+            else if (edgesArray[i] < otherEdgesArray[j])
+                i++;
+            else
+                j++;
+        }
+        return shared;
+    }
+
+    public IntArrayList getSharedVertexIds(BasicEmbedding embedding) {
+        IntArrayList shared = new IntArrayList();
+        IntArrayList otherVertices = embedding.getVertices();
+
+        int verticesArray[] = Arrays.copyOf(vertices.getBackingArray(), this.getNumVertices());
+        Arrays.sort(verticesArray);
+
+        int otherVerticesArray[] = Arrays.copyOf(otherVertices.getBackingArray(), embedding.getNumVertices());
+        Arrays.sort(otherVerticesArray);
+
+        int i=0, j=0;
+        while (i < this.getNumVertices() && j < embedding.getNumVertices()) {
+            if (verticesArray[i] == otherVerticesArray[j]) {
+                shared.add(verticesArray[i]);
+                i++;
+                j++;
+            }
+            else if (verticesArray[i] < otherVerticesArray[j])
+                i++;
+            else
+                j++;
+        }
+        return shared;
     }
 }

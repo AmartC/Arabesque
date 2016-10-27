@@ -31,7 +31,7 @@ public class MotifComputation extends VertexInducedComputation<VertexInducedEmbe
     }
 
     @Override
-    public boolean shouldExpand(VertexInducedEmbedding embedding) {
+    public boolean shouldModify(VertexInducedEmbedding embedding) {
         return embedding.getNumVertices() < maxsize;
     }
 

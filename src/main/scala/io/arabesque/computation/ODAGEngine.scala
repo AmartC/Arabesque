@@ -105,7 +105,7 @@ trait ODAGEngine[
   }
 
   /**
-   * It does the computation of this module, i.e., expand/compute
+   * It does the computation of this module, i.e., modify/compute
    *
    * @param inboundStashes iterator of BasicODAG stashes
    */
@@ -129,10 +129,8 @@ trait ODAGEngine[
    */
   private def expansionCompute(inboundStashes: Iterator[S]): Unit = {
     if (superstep == 0) { // bootstrap
-
       val initialEmbedd: E = configuration.createEmbedding()
-      computation.expand (initialEmbedd)
-
+      computation.modify (initialEmbedd)
     } else {
       var hasNext = true
       while (hasNext) getNextInboundEmbedding (inboundStashes) match {
@@ -147,11 +145,11 @@ trait ODAGEngine[
   }
 
   /**
-   * Calls computation to expand an embedding
+   * Calls computation to modify an embedding
    *
    * @param embedding embedding to be expanded
    */
-  def internalCompute(embedding: E) = computation.expand (embedding)
+  def internalCompute(embedding: E) = computation.modify (embedding)
 
   /**
    * Reads next embedding from previous ODAGs
@@ -233,19 +231,19 @@ trait ODAGEngine[
   }
 
   /**
-   * Called whenever an embedding survives the expand/filter process and must be
+   * Called whenever an embedding survives the modify/filter process and must be
    * carried on to the next superstep
    *
    * @param embedding embedding that must be processed
    */
-  def addOutboundEmbedding(embedding: E) = processExpansion (embedding)
+  def addOutboundEmbedding(embedding: E) = processModification (embedding)
 
   /**
    * Adds an expansion (embedding) to the outbound odags.
    *
    * @param expansion embedding to be added to the stash of outbound odags
    */
-  override def processExpansion(expansion: E) = {
+  override def processModification(expansion: E) = {
     nextEmbeddingStash.addEmbedding (expansion)
     numEmbeddingsGenerated += 1
   }

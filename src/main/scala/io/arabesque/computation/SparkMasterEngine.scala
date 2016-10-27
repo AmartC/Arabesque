@@ -40,12 +40,29 @@ trait SparkMasterEngine [E <: Embedding]
   def mergeOrReplaceAggregations (
       aggregations: Map[String,AggregationStorage[_ <: Writable, _ <: Writable]],
       previousAggregations: Map[String,AggregationStorage[_ <: Writable, _ <: Writable]])
-  : Map[String,AggregationStorage[_ <: Writable,_ <: Writable]] = if (config.isAggregationIncremental) {
-    // we compose all entries
-    previousAggregations.foreach {case (k,v) => aggregations.update (k,v)}
+  : Map[String,AggregationStorage[_ <: Writable, _ <: Writable]] = if (config.isAggregationIncremental) {
+
+    // aux function that treats two storages as the same type in order to do
+    // aggregation
+    def aggregateStorage[K <: Writable, V <: Writable](
+        aggStorage1: AggregationStorage[K,V],
+        aggStorage2: AggregationStorage[_,_]): AggregationStorage[K,V] = {
+      aggStorage1.aggregate(aggStorage2.asInstanceOf[AggregationStorage[K,V]])
+      aggStorage1
+    }
+
+    // we aggregate with new mappings
+    previousAggregations.foreach { case (name,agg1) =>
+        aggregations.get(name) match {
+          case Some(agg2) =>
+            aggregateStorage (agg2, agg1)
+          case None =>
+            aggregations.update (name, agg1)
+        } 
+      }
     aggregations
   } else {
-    // we replace with new entries
+    // we replace with new mappings
     previousAggregations
   }
 
@@ -92,6 +109,7 @@ trait SparkMasterEngine [E <: Embedding]
 object SparkMasterEngine {
   import Configuration._
   import SparkConfiguration._
+
   def apply[E <: Embedding] (sc: SparkContext, config: SparkConfiguration[E]) =
       config.getString(CONF_COMM_STRATEGY, CONF_COMM_STRATEGY_DEFAULT) match {
     case COMM_ODAG_SP =>
@@ -100,5 +118,20 @@ object SparkMasterEngine {
       new ODAGMasterEngineMP [E] (sc, config)
     case COMM_EMBEDDING =>
       new SparkEmbeddingMasterEngine [E] (sc, config)
+  }
+
+  def apply(confs: Map[String,Any])
+    : SparkMasterEngine[_] = confs.get ("comm_strategy") match {
+    case Some(COMM_ODAG_SP) =>
+      new ODAGMasterEngineSP (confs)
+    case Some(COMM_ODAG_MP) =>
+      new ODAGMasterEngineMP (confs)
+    case Some(COMM_EMBEDDING) =>
+      new SparkEmbeddingMasterEngine (confs)
+    case None =>
+      confs.update ("comm_strategy", CONF_COMM_STRATEGY_DEFAULT)
+      apply (confs)
+    case Some(invalid) =>
+      throw new RuntimeException(s"Communication Strategy is invalid: ${invalid}")
   }
 }

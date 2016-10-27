@@ -1,7 +1,11 @@
 package io.arabesque.embedding;
 
 import io.arabesque.utils.collection.IntArrayList;
+import io.arabesque.utils.ArticulationPoints;
+import io.arabesque.graph.Edge;
 import net.openhft.koloboke.collect.IntCollection;
+import net.openhft.koloboke.collect.set.hash.HashIntSet;
+import net.openhft.koloboke.collect.set.hash.HashIntSets;
 import net.openhft.koloboke.function.IntConsumer;
 
 import java.io.DataInput;
@@ -16,6 +20,10 @@ public class VertexInducedEmbedding extends BasicEmbedding {
     // Edge tracking for incremental modifications {{
     private IntArrayList numEdgesAddedWithWord;
     // }}
+    //
+
+    // finding the articulation points in the embedding
+    private ArticulationPoints articRunner;
 
     @Override
     protected void init() {
@@ -39,6 +47,17 @@ public class VertexInducedEmbedding extends BasicEmbedding {
     @Override
     public int getNumWords() {
         return getNumVertices();
+    }
+
+    @Override
+    public IntArrayList getNumWordsAddedWithWord() {
+       return numEdgesAddedWithWord;
+    }
+
+    @Override
+    public void setFromEmbedding(Embedding other) {
+       super.setFromEmbedding(other);
+       numEdgesAddedWithWord = other.getNumWordsAddedWithWord();
     }
 
     @Override
@@ -70,8 +89,21 @@ public class VertexInducedEmbedding extends BasicEmbedding {
         return numEdgesAddedWithWord.getLastOrDefault(0);
     }
 
-    protected IntCollection getValidNeighboursForExpansion(int vertexId) {
+    protected IntCollection getValidElementsForExpansion(int vertexId) {
         return mainGraph.getVertexNeighbours(vertexId);
+    }
+
+    protected IntCollection getValidElementsForContraction(int vertexId) {
+       if (articRunner == null)
+          articRunner = new ArticulationPoints(mainGraph);
+
+       boolean[] ap = articRunner.articulationPoints (this);
+       IntArrayList contractions = new IntArrayList();
+
+       for (int i = 0; i < vertices.size(); ++i)
+          if (!ap[i]) contractions.add(vertices.getUnchecked(i));
+
+       return contractions;
     }
 
     @Override
@@ -83,7 +115,7 @@ public class VertexInducedEmbedding extends BasicEmbedding {
     public void addWord(int word) {
         super.addWord(word);
         vertices.add(word);
-        updateEdges(word, vertices.size() - 1);
+        updateEdgesAddition(word, vertices.size() - 1);
     }
 
     @Override
@@ -100,6 +132,27 @@ public class VertexInducedEmbedding extends BasicEmbedding {
     }
 
     @Override
+    public void removeWord(int word) {
+        if (getNumVertices() == 0) {
+            return;
+        }
+
+        IntArrayList words = getWords();
+        int numWords = words.size();
+
+        int idx = 0;
+        while (idx < numWords) {
+            if (word == words.getUnchecked(idx))
+                break;
+            idx++;
+        }
+        updateEdgesDeletion(idx);
+        vertices.remove (idx);
+
+        super.removeWord(word);
+    }
+
+    @Override
     public void readFields(DataInput in) throws IOException {
         reset();
 
@@ -108,7 +161,7 @@ public class VertexInducedEmbedding extends BasicEmbedding {
         int numVertices = vertices.size();
 
         for (int i = 0; i < numVertices; ++i) {
-            updateEdges(vertices.getUnchecked(i), i);
+            updateEdgesAddition(vertices.getUnchecked(i), i);
         }
     }
 
@@ -122,7 +175,7 @@ public class VertexInducedEmbedding extends BasicEmbedding {
      *
      * @param newVertexId The id of the new vertex that was just added.
      */
-    private void updateEdges(int newVertexId, int positionAdded) {
+    private void updateEdgesAddition(int newVertexId, int positionAdded) {
         IntArrayList vertices = getVertices();
 
         int addedEdges = 0;
@@ -137,6 +190,43 @@ public class VertexInducedEmbedding extends BasicEmbedding {
         }
 
         numEdgesAddedWithWord.add(addedEdges);
+    }
+
+    /**
+     * Updates the list of edges of this embedding based on the deletion of a vertex.
+     *
+     * @param positionDeleted the idx of the vertex that was just deleted.
+     */
+    private void updateEdgesDeletion(int positionDeleted) {
+       int bla = 0;
+        for (int i = 0; i < getNumEdges(); i++) {
+              Edge edge = mainGraph.getEdge(edges.getUnchecked(i));
+              if (edge.hasVertex(vertices.getUnchecked(positionDeleted))) {
+               bla++;
+            }
+        }
+
+         if (getNumEdges()-bla < getNumVertices()-2) 
+            throw new RuntimeException (this.getPattern() + " impossible be connected: " + (getNumEdges()-bla) + " " + (getNumVertices()-2) + " " + bla);
+            
+
+        int j = 0, i = 0;
+        while (i < getNumWords()) {
+           int target = j + numEdgesAddedWithWord.getUnchecked(i);
+           while (j < target) {
+              Edge edge = mainGraph.getEdge(edges.getUnchecked(j));
+              if (edge.hasVertex(vertices.getUnchecked(positionDeleted))) {
+                 edges.remove(j);
+                 int newNumEdgesAdded = numEdgesAddedWithWord.getUnchecked(i) - 1;
+                 numEdgesAddedWithWord.setUnchecked(i, newNumEdgesAdded);
+                 target--;
+              } else {
+                 j++;
+              }
+           }
+           i++;
+        }
+        numEdgesAddedWithWord.remove(positionDeleted);
     }
 
     private class UpdateEdgesConsumer implements IntConsumer {
@@ -155,5 +245,14 @@ public class VertexInducedEmbedding extends BasicEmbedding {
             edges.add(i);
             ++numAdded;
         }
+    }
+
+    @Override
+    public int getTotalNumWords(){
+        return mainGraph.getNumberVertices();
+    }
+
+    public IntArrayList getSharedWordIds(EdgeInducedEmbedding embedding) {
+        return getSharedVertexIds(embedding);
     }
 }

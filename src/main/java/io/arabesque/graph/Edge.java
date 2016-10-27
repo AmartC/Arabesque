@@ -97,4 +97,8 @@ public class Edge implements Writable, java.io.Serializable {
 
         return hasVertex(src2) || hasVertex(dst2);
     }
+
+    public boolean neighborWith(Vertex vertex) {
+        return hasVertex(vertex.getVertexId());
+    }
 }

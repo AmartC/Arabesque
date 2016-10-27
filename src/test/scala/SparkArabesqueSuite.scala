@@ -166,4 +166,15 @@ class SparkArabesqueSuite extends FunSuite with BeforeAndAfterAll {
    assert (embeddings.distinct.count == cliquesNumEmbeddings)
  }
 
+  test ("[motifs,embedding,sampling] arabesque API") {
+    val start = System.currentTimeMillis
+    val motifsRes = arabGraph.motifsSampling (3, 5, 100, 10000).
+      set ("log_level", "debug").
+      set ("comm_strategy", COMM_EMBEDDING)
+    val odags = motifsRes.odags
+    assert (odags.count == 0)
+    val embeddings = motifsRes.embeddings
+    val end = System.currentTimeMillis
+    println (s"elapsed time [motifs,embedding,sampling]: ${end - start}ms")
+  }
 } 

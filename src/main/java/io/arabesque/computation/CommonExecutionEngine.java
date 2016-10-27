@@ -6,7 +6,7 @@ import org.apache.hadoop.io.Writable;
 
 public interface CommonExecutionEngine<O extends Embedding> {
 
-    void processExpansion(O expansion);
+    void processModification(O expansion);
 
     <A extends Writable> A getAggregatedValue(String name);
 

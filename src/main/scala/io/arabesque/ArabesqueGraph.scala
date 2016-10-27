@@ -67,6 +67,31 @@ class ArabesqueGraph(
     motifs (config)
   }
 
+  /**
+   * Computes motifs of a given size by sampling
+   *
+   * @param maxSize number of vertices of the target motifs
+   * @param maxStep
+   * @param sampleSize
+   *
+   * @return an [[io.arabesque.ArabesqueResult]] carrying embeddings
+   */
+  def motifsSampling(maxSize: Int, aggStep: Int, maxStep: Int, sampleSize: Int)
+      : ArabesqueResult[_] = {
+    Configuration.unset
+    val config = new SparkConfiguration[VertexInducedEmbedding]
+    config.set ("input_graph_path", path)
+    config.set ("input_graph_local", local)
+    config.set ("output_path", s"${tmpPath}/motifssampling-${config.getUUID}")
+    config.set ("arabesque.sampling.maxsize", maxSize)
+    config.set ("arabesque.sampling.maxstep", maxStep)
+    config.set ("arabesque.sampling.samplesize", sampleSize)
+    config.set ("arabesque.sampling.aggstep", aggStep)
+    config.set ("computation",
+      "io.arabesque.gmlib.sampling.MotifMHSamplingComputation")
+    motifs (config)
+  }
+
   /** fsm */
   def fsm(config: SparkConfiguration[_ <: Embedding]): ArabesqueResult[_] = {
     resultHandler (config)

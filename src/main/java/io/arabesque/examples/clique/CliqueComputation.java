@@ -26,7 +26,7 @@ public class CliqueComputation extends VertexInducedComputation<VertexInducedEmb
     }
 
     @Override
-    public boolean shouldExpand(VertexInducedEmbedding embedding) {
+    public boolean shouldModify(VertexInducedEmbedding embedding) {
         return embedding.getNumVertices() < maxsize;
     }
 

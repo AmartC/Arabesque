@@ -428,6 +428,15 @@ public class BasicMainGraph implements MainGraph {
         return (dest1 == src2 || dest1 == dest2 || src1 == dest2);
     }
 
+    @Override
+    public boolean isNeighborEdge(int vertex, int edge) {
+        int src = edgeIndexF[edge].getSourceId();
+        int dest = edgeIndexF[edge].getDestinationId();
+
+        return (dest == vertex || src == vertex);
+
+    }
+
     protected Vertex createVertex(int id, int label) {
         return new Vertex(id, label);
     }

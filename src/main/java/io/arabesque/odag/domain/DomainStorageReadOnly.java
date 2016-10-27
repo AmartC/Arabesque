@@ -281,7 +281,7 @@ public class DomainStorageReadOnly extends DomainStorage {
                 }
             }
 
-            return computation.filter(reusableEmbedding) && computation.shouldExpand(reusableEmbedding);
+            return computation.filter(reusableEmbedding) && computation.shouldModify(reusableEmbedding);
         }
 
         public boolean getEnumerationWithStack(int targetSize) {
@@ -811,7 +811,7 @@ public class DomainStorageReadOnly extends DomainStorage {
             }
 
             boolean valid = computation.filter(reusableEmbedding) && 
-               computation.shouldExpand(reusableEmbedding);
+               computation.shouldModify(reusableEmbedding);
 
             if (!valid)
                prunedByTheEnd += 1;

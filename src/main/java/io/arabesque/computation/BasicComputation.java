@@ -5,9 +5,8 @@ import io.arabesque.conf.Configuration;
 import io.arabesque.embedding.Embedding;
 import io.arabesque.graph.MainGraph;
 import io.arabesque.pattern.Pattern;
+import io.arabesque.utils.collection.IntArrayList;
 import net.openhft.koloboke.collect.IntCollection;
-import net.openhft.koloboke.collect.set.hash.HashIntSet;
-import net.openhft.koloboke.collect.set.hash.HashIntSets;
 import net.openhft.koloboke.function.IntConsumer;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Writable;
@@ -18,12 +17,11 @@ public abstract class BasicComputation<E extends Embedding> implements Computati
 
     private boolean outputEnabled;
 
-    private CommonExecutionEngine<E> underlyingExecutionEngine;
-    private MainGraph mainGraph;
-    private Configuration configuration;
-    private IntConsumer expandConsumer;
-    private long numChildrenEvaluated = 0;
-    private E currentEmbedding;
+    protected CommonExecutionEngine<E> underlyingExecutionEngine;
+    protected MainGraph mainGraph;
+    private IntConsumer modifyConsumer;
+    protected long numChildrenEvaluated = 0;
+    protected E currentEmbedding;
 
     @Override
     public final void setUnderlyingExecutionEngine(CommonExecutionEngine<E> underlyingExecutionEngine) {
@@ -40,10 +38,11 @@ public abstract class BasicComputation<E extends Embedding> implements Computati
 
     @Override
     public void init() {
-        expandConsumer = new IntConsumer() {
+        modifyConsumer = new IntConsumer() {
             @Override
             public void accept(int wordId) {
-                doExpandFilter(wordId);
+                assert wordId >= 0;
+                doModifyFilter(wordId);
             }
         };
 
@@ -59,63 +58,71 @@ public abstract class BasicComputation<E extends Embedding> implements Computati
     }
 
     @Override
-    public void expand(E embedding) {
+    public void modify(E embedding) {
+        currentEmbedding = embedding;
         if (getStep() > 0) {
             if (!aggregationFilter(embedding)) {
                 return;
             }
-
             aggregationProcess(embedding);
         }
 
-        IntCollection possibleExtensions = getPossibleExtensions(embedding);
-        
-        if (possibleExtensions != null) {
-            filter(embedding, possibleExtensions);
+        //System.out.println("Current emb." + embedding.getWords());
+        IntCollection possibleModifications = getPossibleModifications(embedding);
+        //System.out.println("Possible Modif." + possibleModifications);
+
+        if (possibleModifications != null && getStep() > 0) {
+            filter(embedding, possibleModifications);
         }
 
-        if (possibleExtensions == null || possibleExtensions.isEmpty()) {
-            handleNoExpansions(embedding);
+        if (possibleModifications == null || possibleModifications.isEmpty()) {
+            handleNoModifications(embedding);
             return;
         }
 
-        currentEmbedding = embedding;
-        possibleExtensions.forEach(expandConsumer);
+        possibleModifications.forEach(modifyConsumer);
     }
 
-    private void doExpandFilter(int wordId) {
+    protected void doModifyFilter(int wordId) {
         if (filter(currentEmbedding, wordId)) {
             currentEmbedding.addWord(wordId);
 
             if (filter(currentEmbedding)) {
-                if (shouldExpand(currentEmbedding)) {
-                    underlyingExecutionEngine.processExpansion(currentEmbedding);
+                if (shouldModify(currentEmbedding)) {
+                    underlyingExecutionEngine.processModification(currentEmbedding);
                 }
 
                 numChildrenEvaluated++;
                 process(currentEmbedding);
             }
-
             currentEmbedding.removeLastWord();
         }
-
     }
 
     @Override
-    public void handleNoExpansions(E embedding) {
+    public void handleNoModifications(E embedding) {
         // Empty by default
     }
 
-    private IntCollection getPossibleExtensions(E embedding) {
-        if (embedding.getNumWords() > 0) {
-            return embedding.getExtensibleWordIds();
+    public IntCollection getPossibleExtensions(E embedding) {
+        if (getStep() > 0 || embedding.getNumWords() > 0) {
+            IntCollection extensions = embedding.getExtensibleWordIds();
+            return extensions;
         } else {
             // TODO: put getInitialExtensions into embedding class
             return getInitialExtensions();
         }
     }
 
-    protected HashIntSet getInitialExtensions() {
+    public IntCollection getPossibleContractions(E embedding) {
+        return embedding.getContractibleWordIds();
+    }
+
+    protected IntCollection getPossibleModifications(E embedding) {
+        return getPossibleExtensions(embedding);
+    }
+
+    protected IntArrayList getInitialExtensions() {
         int totalNumWords = getInitialNumWords();
         int numPartitions = getNumberPartitions();
         int myPartitionId = getPartitionId();
@@ -129,9 +136,7 @@ public abstract class BasicComputation<E extends Embedding> implements Computati
             endMyWordRange = totalNumWords;
         }
 
-        // TODO: Replace this by a list implementing IntCollection. No need for set.
-        HashIntSet initialExtensions = HashIntSets.newMutableSet(numWordsPerPartition);
-
+        IntArrayList initialExtensions = new IntArrayList();
         for (int i = startMyWordRange; i < endMyWordRange; ++i) {
             initialExtensions.add(i);
         }
@@ -142,12 +147,12 @@ public abstract class BasicComputation<E extends Embedding> implements Computati
     protected abstract int getInitialNumWords();
 
     @Override
-    public boolean shouldExpand(E embedding) {
+    public boolean shouldModify(E embedding) {
         return true;
     }
 
     @Override
-    public void filter(E existingEmbedding, IntCollection extensionPoints) {
+    public void filter(E existingEmbedding, IntCollection modificationPoints) {
         // Do nothing by default
     }
 

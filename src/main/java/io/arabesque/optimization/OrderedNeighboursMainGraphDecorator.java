@@ -97,6 +97,11 @@ public class OrderedNeighboursMainGraphDecorator implements OrderedNeighboursMai
     }
 
     @Override
+    public boolean isNeighborEdge(int vertex, int edge) {
+        return underlyingMainGraph.isNeighborEdge(vertex, edge);
+    }
+
+    @Override
     public VertexNeighbourhood getVertexNeighbourhood(int vertexId) {
         return underlyingMainGraph.getVertexNeighbourhood(vertexId);
     }

@@ -21,6 +21,8 @@ public interface Embedding extends WritableObject, Externalizable {
     int getNumWords();
 
     Pattern getPattern();
+    
+    IntArrayList getNumWordsAddedWithWord();
 
     int getNumVerticesAddedWithExpansion();
 
@@ -30,10 +32,16 @@ public interface Embedding extends WritableObject, Externalizable {
 
     void removeLastWord();
 
+    void removeWord(int word);
+
     IntCollection getExtensibleWordIds();
+
+    IntCollection getContractibleWordIds();
 
     boolean isCanonicalEmbeddingWithWord(int wordId);
 
     String toOutputString();
+    
+    <E extends Embedding> void setFromEmbedding(E other);
 
 }

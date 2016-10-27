@@ -46,6 +46,16 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
 
   private var masterComputation: MasterComputation = _
 
+  def this(confs: Map[String,Any]) {
+    this (new SparkConfiguration [E] (confs))
+
+    sc = new SparkContext(config.sparkConf)
+    val logLevel = config.getString ("log_level", "INFO").toUpperCase
+    sc.setLogLevel (logLevel)
+
+    init()
+  }
+
   def this(_sc: SparkContext, config: SparkConfiguration[E]) {
     this (config)
     sc = _sc
@@ -88,6 +98,8 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
     aggAccums.update (AGG_EMBEDDINGS_OUTPUT,
       sc.accumulator [Long] (0L, AGG_EMBEDDINGS_OUTPUT))
 
+    aggregations = Map.empty
+
   }
 
   override def haltComputation() = {
@@ -118,6 +130,12 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
       Map.empty[String,AggregationStorage[_ <: Writable, _ <: Writable]]
     )
 
+    //val beforeInit = System.currentTimeMillis
+    //superstepRDD.foreachPartition (_ => configBc.value.initialize())
+    //val afterInit = System.currentTimeMillis
+
+    //logInfo (s"Configuration initialized, starting computation (${afterInit - beforeInit})")
+
     val startTime = System.currentTimeMillis
 
     do {
@@ -139,6 +157,9 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
       // the superstep
       execEngines.persist (MEMORY_AND_DISK_SER)
 
+      execEngines.foreachPartition ( _ => {})
+      superstepRDD.unpersist()
+
       /** [1] We extract and aggregate the *aggregations* globally.
        */
 
@@ -149,11 +170,21 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
         case Success(previousAggregations) =>
 
           aggregations = mergeOrReplaceAggregations (aggregations, previousAggregations)
-          
+         
           logInfo (s"""Aggregations and sizes
             ${aggregations.
             map(tup => (tup._1,tup._2.getNumberMappings)).mkString("\n")}
           """)
+
+          logDebug (s"""Aggregations and sizes
+            ${aggregations.
+            map(tup => (tup._1,tup._2)).mkString("\n")}
+          """)
+
+          for ((k,agg) <- aggregations.iterator) {
+            val patternMapping = agg.getMapping
+            logDebug (s"patterns: ${patternMapping.mkString(";")}")
+          }
 
           previousAggregationsBc.unpersist()
           previousAggregationsBc = sc.broadcast (aggregations)
@@ -171,7 +202,9 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
       superstepRDD = execEngines.
         flatMap (_.flush).
         partitionBy (new HashPartitioner (numPartitions)).
-        values
+        values.cache
+
+      superstepRDD.foreachPartition (_ => {})
       
       // whether the user chose to customize master computation, executed every
       // superstep
@@ -209,7 +242,7 @@ class SparkEmbeddingMasterEngine[E <: Embedding]
       aggAccums: Map[String,Accumulator[_]],
       previousAggregationsBc: Broadcast[_]) = {
 
-    // read embeddings from embedding caches, expand, filter and process
+    // read embeddings from embedding caches, modify, filter and process
     val execEngines = superstepRDD.mapPartitionsWithIndex { (idx, cacheIter) =>
 
       configBc.value.initialize()

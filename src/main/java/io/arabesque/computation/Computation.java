@@ -25,9 +25,9 @@ public interface Computation<E extends Embedding> {
 
     void aggregationProcess(E embedding);
 
-    void handleNoExpansions(E embedding);
+    void handleNoModifications(E embedding);
 
-    boolean shouldExpand(E newEmbedding);
+    boolean shouldModify(E newEmbedding);
     // }}}
 
     // {{{ Other filter-hooks (performance/canonicality related)
@@ -58,7 +58,7 @@ public interface Computation<E extends Embedding> {
 
     // {{{ Internal
     void setUnderlyingExecutionEngine(CommonExecutionEngine<E> executionEngine);
-    void expand(E embedding);
+    void modify(E embedding);
     Class<? extends Embedding> getEmbeddingClass();
     // }}}
 }

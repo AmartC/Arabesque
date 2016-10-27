@@ -34,7 +34,7 @@ public class CountingTrianglesComputation extends VertexInducedComputation<Verte
     }
 
     @Override
-    public boolean shouldExpand(VertexInducedEmbedding embedding) {
+    public boolean shouldModify(VertexInducedEmbedding embedding) {
         return embedding.getNumVertices() < 3;
     }
 

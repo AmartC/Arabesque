@@ -32,6 +32,9 @@ public interface MainGraph {
     @Deprecated
     boolean isNeighborEdge(int src1, int dest1, int edge2);
 
+    @Deprecated
+    boolean isNeighborEdge(int vertex, int edge);
+
     VertexNeighbourhood getVertexNeighbourhood(int vertexId);
 
     IntCollection getVertexNeighbours(int vertexId);

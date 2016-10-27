@@ -49,7 +49,7 @@ public class FSMComputation extends EdgeInducedComputation<EdgeInducedEmbedding>
     }
     
     @Override
-    public boolean shouldExpand(EdgeInducedEmbedding embedding) {
+    public boolean shouldModify(EdgeInducedEmbedding embedding) {
         return embedding.getNumWords() < maxSize;
     }
 

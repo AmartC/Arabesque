@@ -1,4 +1,5 @@
 package io.arabesque.computation;
+import io.arabesque.conf.Configuration;
 
 import io.arabesque.aggregation.AggregationStorage;
 import org.apache.hadoop.io.Writable;

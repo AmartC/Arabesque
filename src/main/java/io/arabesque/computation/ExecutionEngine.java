@@ -199,15 +199,15 @@ public class ExecutionEngine<O extends Embedding>
 
     protected void bootstrap() throws IOException {
         O embedding = configuration.createEmbedding();
-        computation.expand(embedding);
+        computation.modify(embedding);
     }
 
     protected void internalCompute(O currentObject)
             throws IOException {
-        computation.expand(currentObject);
+        computation.modify(currentObject);
     }
 
-    public void processExpansion(O expansion) {
+    public void processModification(O expansion) {
         currentEmbeddingChildrenGenerated++;
         communicationStrategy.addOutboundEmbedding(expansion);
     }
